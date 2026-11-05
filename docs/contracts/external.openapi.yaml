@@ -1,0 +1,7 @@
+openapi: 3.1.0
+info: {title: FPM External API, version: 1.0.0}
+paths:
+  /external/connect: {post: {summary: Подключение}}
+  /external/disconnect: {post: {summary: Отключение}}
+  /external/sync: {post: {summary: Запуск синхронизации}}
+  /external/sync/{job_id}: {get: {summary: Состояние синхронизации}}

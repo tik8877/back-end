@@ -1,0 +1,5 @@
+openapi: 3.1.0
+info: {title: FPM Payments API, version: 1.0.0}
+paths:
+  /transfers: {post: {summary: Создание перевода}, get: {summary: Поиск перевода}}
+  /transfers/{transfer_id}: {get: {summary: Состояние перевода}}

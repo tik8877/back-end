@@ -1,0 +1,8 @@
+openapi: 3.1.0
+info: {title: FPM Auth API, version: 1.0.0}
+paths:
+  /auth/register: {post: {summary: Регистрация}}
+  /auth/login: {post: {summary: Вход}}
+  /auth/refresh: {post: {summary: Обновление пары токенов}}
+  /auth/logout: {post: {summary: Выход}}
+  /.well-known/jwks.json: {get: {summary: Публичные ключи}}

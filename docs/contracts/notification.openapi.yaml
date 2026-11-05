@@ -1,0 +1,6 @@
+openapi: 3.1.0
+info: {title: FPM Notification API, version: 1.0.0}
+paths:
+  /notifications/subscribe: {post: {summary: Подписка}}
+  /notifications/unsubscribe: {post: {summary: Отписка}}
+  /notifications/history: {get: {summary: История}}

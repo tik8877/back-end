@@ -1,0 +1,12 @@
+{
+  "title": "FPM Business",
+  "uid": "fpm-business",
+  "schemaVersion": 39,
+  "panels": [
+    {"title": "Transfers", "type": "timeseries", "targets": [{"expr": "sum(rate(business_operations_total{operation=\"transfer\"}[5m]))"}]},
+    {"title": "Failed transfers", "type": "timeseries", "targets": [{"expr": "sum(rate(business_operations_total{operation=\"transfer\",status=\"failed\"}[5m]))"}]},
+    {"title": "Account operations", "type": "timeseries", "targets": [{"expr": "sum by(operation,status) (rate(business_operations_total{service=\"accounts\"}[5m]))"}]},
+    {"title": "Queue lag", "type": "timeseries", "targets": [{"expr": "sum by(queue) (rabbitmq_queue_messages_ready)"}]},
+    {"title": "Cashback mismatches", "type": "timeseries", "targets": [{"expr": "rate(cashback_reconciliation_errors_total[5m])"}]}
+  ]
+}

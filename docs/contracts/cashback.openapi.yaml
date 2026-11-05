@@ -1,0 +1,5 @@
+openapi: 3.1.0
+info: {title: FPM Cashback API, version: 1.0.0}
+paths:
+  /cashback/expected: {get: {summary: Ожидаемые начисления}}
+  /cashback/credited: {get: {summary: Зачисленные начисления}}

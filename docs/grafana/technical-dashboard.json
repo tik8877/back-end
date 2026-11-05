@@ -1,0 +1,13 @@
+{
+  "title": "FPM Technical",
+  "uid": "fpm-technical",
+  "schemaVersion": 39,
+  "panels": [
+    {"title": "Request rate", "type": "timeseries", "targets": [{"expr": "sum by(service) (rate(http_requests_total[5m]))"}]},
+    {"title": "Errors", "type": "timeseries", "targets": [{"expr": "sum by(service) (rate(http_requests_total{status=~\"5..\"}[5m]))"}]},
+    {"title": "p99 duration", "type": "timeseries", "targets": [{"expr": "histogram_quantile(0.99, sum by(le,service) (rate(http_request_duration_seconds_bucket[5m])))"}]},
+    {"title": "CPU", "type": "timeseries", "targets": [{"expr": "sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\"}[5m]))"}]},
+    {"title": "Memory", "type": "timeseries", "targets": [{"expr": "sum by(pod) (container_memory_working_set_bytes{container!=\"\"})"}]},
+    {"title": "Dependency errors", "type": "timeseries", "targets": [{"expr": "sum by(service,dependency) (rate(service_dependency_errors_total[5m]))"}]}
+  ]
+}

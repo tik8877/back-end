@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "fpm-cashback"
+version = "1.0.0"
+description = "Сервис начислений"
+authors = ["FPM Team"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fpm-processing = {path = "../..", develop = true}
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"

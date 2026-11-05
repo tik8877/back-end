@@ -1,0 +1,56 @@
+openapi: 3.1.0
+info:
+  title: FPM Gateway API
+  version: 1.0.0
+servers:
+  - url: /api/v1
+paths:
+  /accounts/{account_id}/withdraw:
+    post:
+      summary: Списание средств
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: account_id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, maxLength: 255}}
+        - {name: X-Request-Id, in: header, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount: {type: string, pattern: '^\d+\.\d{2}$'}
+      responses:
+        '200': {description: Операция завершена}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
+  /payments/transfers:
+    post:
+      summary: Создание перевода
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: Перевод принят}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  schemas:
+    Error:
+      type: object
+      required: [error_code, message, trace_id]
+      properties:
+        error_code: {type: string}
+        message: {type: string}
+        trace_id: {type: [string, 'null']}
+  responses:
+    BadRequest: {description: Некорректный запрос}
+    Unauthorized: {description: Требуется авторизация}
+    Conflict: {description: Операция противоречит текущему состоянию}
+    RateLimited: {description: Превышен лимит}
+    ServiceUnavailable: {description: Сервис временно недоступен}

@@ -1,0 +1,5 @@
+openapi: 3.1.0
+info: {title: FPM Ledger API, version: 1.0.0}
+paths:
+  /statements/{account_id}: {get: {summary: Выписка по счёту}}
+  /balances/{account_id}: {get: {summary: Остаток из журнала}}

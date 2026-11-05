@@ -1,0 +1,10 @@
+apiVersion: 1
+providers:
+  - name: FPM
+    orgId: 1
+    folder: FPM Processing
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

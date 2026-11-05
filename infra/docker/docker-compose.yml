@@ -1,0 +1,228 @@
+name: fpm-processing
+
+x-service-env: &service-env
+  RABBITMQ_URL: amqp://fpm:${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}@rabbitmq:5672/
+  REDIS_URL: redis://redis:6379/0
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+  PROMETHEUS_PORT: "9090"
+
+x-service: &service
+  restart: unless-stopped
+  depends_on:
+    postgres: {condition: service_healthy}
+    rabbitmq: {condition: service_healthy}
+    redis: {condition: service_healthy}
+  networks: [fpm]
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fpm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fpm"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [fpm]
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: fpm
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}
+    ports: ["5672:5672", "15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [fpm]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [fpm]
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports: ["16686:16686", "4317:4317"]
+    networks: [fpm]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9099:9090"]
+    networks: [fpm]
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../docs/grafana:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+    networks: [fpm]
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    networks: [fpm]
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on: [elasticsearch]
+    ports: ["5601:5601"]
+    networks: [fpm]
+
+  auth:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: services/auth/Dockerfile
+    environment:
+      <<: *service-env
+      DATABASE_URL: postgresql+asyncpg://fpm:${POSTGRES_PASSWORD}@postgres:5432/auth
+      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
+      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+    volumes:
+      - ./secrets:/run/keys:ro
+    command: ["/bin/sh", "-c", "alembic -c services/auth/alembic.ini upgrade head && uvicorn services.auth.app.main:app --host 0.0.0.0 --port 8000"]
+    ports: ["8001:8000"]
+
+  accounts:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: services/accounts/Dockerfile
+    environment:
+      <<: *service-env
+      DATABASE_URL: postgresql+asyncpg://fpm:${POSTGRES_PASSWORD}@postgres:5432/accounts
+    command: ["/bin/sh", "-c", "alembic -c services/accounts/alembic.ini upgrade head && uvicorn services.accounts.app.main:app --host 0.0.0.0 --port 8000"]
+    ports: ["8002:8000"]
+
+  payments:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: services/payments/Dockerfile
+    environment:
+      <<: *service-env
+      DATABASE_URL: postgresql+asyncpg://fpm:${POSTGRES_PASSWORD}@postgres:5432/payments
+      ACCOUNTS_SERVICE_URL: http://accounts:8000
+      ANTIFRAUD_SERVICE_URL: http://antifraud:8000
+    command: ["/bin/sh", "-c", "alembic -c services/payments/alembic.ini upgrade head && uvicorn services.payments.app.main:app --host 0.0.0.0 --port 8000"]
+    ports: ["8003:8000"]
+
+  ledger:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: services/ledger/Dockerfile
+    environment:
+      <<: *service-env
+      DATABASE_URL: postgresql+asyncpg://fpm:${POSTGRES_PASSWORD}@postgres:5432/ledger
+    command: ["/bin/sh", "-c", "alembic -c services/ledger/alembic.ini upgrade head && uvicorn services.ledger.app.main:app --host 0.0.0.0 --port 8000"]
+    ports: ["8004:8000"]
+
+  antifraud:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: services/antifraud/Dockerfile
+    environment:
+      <<: *service-env
+    ports: ["8005:8000"]
+
+  notification:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: services/notification/Dockerfile
+    environment:
+      <<: *service-env
+      DATABASE_URL: postgresql+asyncpg://fpm:${POSTGRES_PASSWORD}@postgres:5432/notification
+      TELEGRAM_STUB_URL: http://integration-stub:8000
+    command: ["/bin/sh", "-c", "alembic -c services/notification/alembic.ini upgrade head && uvicorn services.notification.app.main:app --host 0.0.0.0 --port 8000"]
+    ports: ["8006:8000"]
+
+  cashback:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: services/cashback/Dockerfile
+    environment:
+      <<: *service-env
+      DATABASE_URL: postgresql+asyncpg://fpm:${POSTGRES_PASSWORD}@postgres:5432/cashback
+    command: ["/bin/sh", "-c", "alembic -c services/cashback/alembic.ini upgrade head && uvicorn services.cashback.app.main:app --host 0.0.0.0 --port 8000"]
+    ports: ["8007:8000"]
+
+  external:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: services/external/Dockerfile
+    environment:
+      <<: *service-env
+      DATABASE_URL: postgresql+asyncpg://fpm:${POSTGRES_PASSWORD}@postgres:5432/external
+      EVERYPAY_BASE_URL: http://integration-stub:8000
+      EVERYPAY_API_KEY: ${EVERYPAY_API_KEY:?set EVERYPAY_API_KEY}
+    command: ["/bin/sh", "-c", "alembic -c services/external/alembic.ini upgrade head && uvicorn services.external.app.main:app --host 0.0.0.0 --port 8000"]
+    ports: ["8008:8000"]
+
+  integration-stub:
+    build:
+      context: ../..
+      dockerfile: services/auth/Dockerfile
+    command: ["uvicorn", "common.stubs:app", "--host", "0.0.0.0", "--port", "8000"]
+    networks: [fpm]
+
+  gateway:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: gateway/Dockerfile
+    environment:
+      <<: *service-env
+      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      AUTH_SERVICE_URL: http://auth:8000
+      ACCOUNTS_SERVICE_URL: http://accounts:8000
+      PAYMENTS_SERVICE_URL: http://payments:8000
+      LEDGER_SERVICE_URL: http://ledger:8000
+      ANTIFRAUD_SERVICE_URL: http://antifraud:8000
+      NOTIFICATION_SERVICE_URL: http://notification:8000
+      CASHBACK_SERVICE_URL: http://cashback:8000
+      EXTERNAL_SERVICE_URL: http://external:8000
+    volumes:
+      - ./secrets:/run/keys:ro
+    ports: ["8080:8000"]
+
+volumes:
+  postgres-data:
+
+networks:
+  fpm:
+    driver: bridge

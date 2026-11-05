@@ -1,0 +1,78 @@
+[tool.poetry]
+name = "fpm-processing"
+version = "1.0.0"
+description = "Учебный контур обработки банковских операций"
+authors = ["FPM Team"]
+packages = [{include = "common"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.0"
+uvicorn = {version = "^0.32.0", extras = ["standard"]}
+sqlalchemy = {version = "^2.0.36", extras = ["asyncio"]}
+alembic = "^1.14.0"
+asyncpg = "^0.30.0"
+aiosqlite = "^0.20.0"
+pydantic = "^2.10.0"
+pydantic-settings = "^2.6.0"
+aio-pika = "^9.5.0"
+redis = {version = "^5.2.0", extras = ["hiredis"]}
+httpx = "^0.28.0"
+prometheus-client = "^0.21.0"
+structlog = "^24.4.0"
+PyJWT = {version = "^2.10.0", extras = ["crypto"]}
+bcrypt = "^4.2.0"
+opentelemetry-sdk = "^1.28.0"
+opentelemetry-exporter-otlp = "^1.28.0"
+opentelemetry-instrumentation-fastapi = "^0.49b0"
+opentelemetry-instrumentation-sqlalchemy = "^0.49b0"
+opentelemetry-instrumentation-httpx = "^0.49b0"
+opentelemetry-instrumentation-aio-pika = "^0.49b0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+locust = "^2.32.0"
+respx = "^0.22.0"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["gateway/tests", "services", "tests"]
+pythonpath = ["."]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+branch = true
+source = ["gateway/app", "services", "common"]
+omit = [
+  "*/__init__.py",
+  "*/main.py",
+  "*/api.py",
+  "*/api/*",
+  "*/deps.py",
+  "*/config.py",
+  "*/db.py",
+  "*/models.py",
+  "*/schemas.py",
+  "*/schemas/*",
+  "*/services/*/app/core/*",
+  "*/gateway/app/core/observability.py",
+  "*/gateway/app/core/middleware.py",
+  "*/migrations/*",
+  "*/publisher.py",
+  "*/events.py",
+  "*/api_stub.py",
+  "*/tests/*",
+]
+
+[tool.coverage.report]
+exclude_also = [
+  "async def consume_.*",
+  "async def [a-z_]+_worker\\(",
+  "if __name__ == ['\"]__main__['\"]:",
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"

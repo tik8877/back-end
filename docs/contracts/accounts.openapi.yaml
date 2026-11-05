@@ -1,0 +1,8 @@
+openapi: 3.1.0
+info: {title: FPM Accounts API, version: 1.0.0}
+paths:
+  /accounts: {get: {summary: Список счетов}, post: {summary: Создание счёта}}
+  /accounts/{account_id}/deposit: {post: {summary: Пополнение}}
+  /accounts/{account_id}/withdraw: {post: {summary: Списание}}
+  /accounts/{account_id}/reserve: {post: {summary: Резервирование}}
+  /accounts/{account_id}/close: {post: {summary: Закрытие счёта}}

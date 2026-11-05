@@ -1,0 +1,91 @@
+replicaCount: 2
+image:
+  repository: registry.example/fpm/gateway
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+probes:
+  readiness:
+    path: /health/ready
+    initialDelay: 5
+    period: 10
+    timeout: 2
+    failureThreshold: 3
+  liveness:
+    path: /health/live
+    initialDelay: 10
+    period: 10
+    timeout: 2
+    failureThreshold: 3
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+env:
+  - name: OTEL_SERVICE_NAME
+    value: gateway
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: http://jaeger:4317
+  - name: JAEGER_ENDPOINT
+    value: http://jaeger:4317
+  - name: PROMETHEUS_PORT
+    value: "9090"
+  - name: AUTH_SERVICE_URL
+    value: http://auth:8000
+  - name: ACCOUNTS_SERVICE_URL
+    value: http://accounts:8000
+  - name: PAYMENTS_SERVICE_URL
+    value: http://payments:8000
+  - name: LEDGER_SERVICE_URL
+    value: http://ledger:8000
+  - name: ANTIFRAUD_SERVICE_URL
+    value: http://antifraud:8000
+  - name: NOTIFICATION_SERVICE_URL
+    value: http://notification:8000
+  - name: CASHBACK_SERVICE_URL
+    value: http://cashback:8000
+  - name: EXTERNAL_SERVICE_URL
+    value: http://external:8000
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: fpm-shared
+        key: database-url
+  - name: RABBITMQ_URL
+    valueFrom:
+      secretKeyRef:
+        name: fpm-shared
+        key: rabbitmq-url
+  - name: REDIS_URL
+    valueFrom:
+      secretKeyRef:
+        name: fpm-shared
+        key: redis-url
+  - name: JWT_PUBLIC_KEY
+    valueFrom:
+      secretKeyRef:
+        name: gateway-secrets
+        key: jwt-public-key
+envFrom:
+  - secretRef:
+      name: gateway-secrets

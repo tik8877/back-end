@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: fpm-services
+    static_configs:
+      - targets:
+          - gateway:9090
+          - auth:9090
+          - accounts:9090
+          - payments:9090
+          - ledger:9090
+          - antifraud:9090
+          - notification:9090
+          - cashback:9090
+          - external:9090
